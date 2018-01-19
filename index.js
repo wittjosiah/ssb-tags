@@ -1,5 +1,6 @@
 var FlumeReduce = require('flumeview-reduce')
 var ref = require('ssb-ref')
+var _ = require('lodash')
 
 exports.name = 'tags'
 exports.version = require('./package.json').version
@@ -8,48 +9,34 @@ exports.manifest = {
   get: 'async'
 }
 
+var initialState = {}
+
 exports.init = function (ssb, config) {
-  return ssb._flumeUse('tags', FlumeReduce('test', reduce, map))
+  return ssb._flumeUse('tags', FlumeReduce('test', reduce, map, null, initialState))
 
-  function reduce (result, item) {
-    if (!result) result = {}
-    if (!result.tags) result.tags = {}
-    if (!result.messages) result.messages = {}
-    var tags = result.tags
-    var messages = result.messages
-  
-    if (item) {
-      var { tag, author, message, tagged, timestamp } = item
+  function reduce(result, item) {
+    if (!item) return result
 
-      if (!tags[author]) tags[author] = {}
-      if (!tags[author][tag]) tags[author][tag] = {}
-      if (
-        tagged &&
-        (!tags[author][tag][message] || 
-          timestamp > tags[author][tag][message].timestamp)
-      ) {
-        tags[author][tag][message] = { timestamp, tagged }
-      } else if (!tagged && tags[author][tag][message]) {
-        delete tags[author][tag][message]
+    var { tag, author, message, tagged, timestamp } = item
+    var current = _.at(result, `${author}.${tag}.${message}`)[0]
+
+    if (tagged && (!current || timestamp > current)) {
+      var newTag = {
+        [author]: {
+          [tag]: {
+            [message]: timestamp
+          }
+        }
       }
-
-      if (!messages[message]) messages[message] = {}
-      if (!messages[message][tag]) messages[message][tag] = {}
-      if (
-        tagged &&
-        (!messages[message][tag][author] ||
-          timestamp > messages[message][tag][author].timestamp)
-      ) {
-        messages[message][tag][author] = { timestamp, tagged }
-      } else if (!tagged && messages[message][tag][author]) {
-        delete messages[message][tag][authpr]
-      }
+      result = _.merge(result, newTag)
+    } else if (!tagged && current) {
+      delete result[author][tag][message]
     }
   
     return result
   }
   
-  function map (msg) {
+  function map(msg) {
     // only include your own tags (for now)
     if (msg.value.author !== ssb.id) return
   
