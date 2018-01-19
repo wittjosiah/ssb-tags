@@ -1,6 +1,7 @@
 var FlumeReduce = require('flumeview-reduce')
 var ref = require('ssb-ref')
-var _ = require('lodash')
+var get = require('lodash/get')
+var merge = require('lodash/merge')
 
 exports.name = 'tags'
 exports.version = require('./package.json').version
@@ -11,16 +12,16 @@ exports.manifest = {
 
 var initialState = {}
 
-exports.init = function (ssb, config) {
+exports.init = function(ssb, config) {
   return ssb._flumeUse('tags', FlumeReduce('test', reduce, map, null, initialState))
 
   function reduce(result, item) {
     if (!item) return result
 
     var { tag, author, message, tagged, timestamp } = item
-    var current = _.at(result, `${author}.${tag}.${message}`)[0]
+    var storedTimestamp = get(result, [author, tag, message])
 
-    if (tagged && (!current || timestamp > current)) {
+    if (shouldAddTag()) {
       var newTag = {
         [author]: {
           [tag]: {
@@ -28,12 +29,21 @@ exports.init = function (ssb, config) {
           }
         }
       }
-      result = _.merge(result, newTag)
-    } else if (!tagged && current) {
+      result = merge(result, newTag)
+    } else if (shouldRemoveTag()) {
       delete result[author][tag][message]
     }
   
     return result
+
+    function shouldAddTag() {
+      if (tagged !== true) return false
+      return !storedTimestamp || timestamp > storedTimestamp
+    }
+
+    function shouldRemoveTag() {
+      return storedTimestamp && tagged === false
+    }
   }
   
   function map(msg) {
@@ -46,7 +56,7 @@ exports.init = function (ssb, config) {
       msg = ssb.private.unbox(msg)
     }
   
-    if (msg.value.content && msg.value.content.type === 'tag' && ref.isLink(msg.value.content.message)) {
+    if (isTag(msg)) {
       return {
         tag: msg.key,
         author: msg.value.author,
@@ -56,4 +66,9 @@ exports.init = function (ssb, config) {
       }
     }
   }
+}
+
+function isTag(msg) {
+  return get(msg, 'value.content.type') === 'tag'
+    && ref.isLink(get(msg, 'value.content.message'))
 }
