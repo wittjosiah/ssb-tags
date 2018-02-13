@@ -18,26 +18,33 @@ exports.init = function(ssb, config) {
   function reduce(result, item) {
     if (!item) return result
 
-    var { tag, author, message, tagged, timestamp } = item
-    var storedTimestamp = get(result, [author, tag, message])
+    var { root, tagKey, author, message, tagged, timestamp } = item
+    var storedTimestamp = get(result, [author, tagKey, message])
 
-    if (shouldAddTag()) {
+    if (root) {
+      var rootTag = {
+        [author]: {
+          [tagKey]: {}
+        }
+      }
+      result = merge(result, rootTag)
+    } else if (shouldAddTag()) {
       var newTag = {
         [author]: {
-          [tag]: {
+          [tagKey]: {
             [message]: timestamp
           }
         }
       }
       result = merge(result, newTag)
     } else if (shouldRemoveTag()) {
-      delete result[author][tag][message]
+      delete result[author][tagKey][message]
     }
   
     return result
 
     function shouldAddTag() {
-      if (tagged !== true) return false
+      if (!tagged) return false
       return !storedTimestamp || timestamp > storedTimestamp
     }
 
@@ -55,17 +62,28 @@ exports.init = function(ssb, config) {
       // unbox private message (requires ssb-private plugin)
       msg = ssb.private.unbox(msg)
     }
-  
+
     if (isTag(msg)) {
       return {
-        tag: msg.key,
+        tagKey: msg.value.content.root,
         author: msg.value.author,
         message: msg.value.content.message,
         tagged: msg.value.content.tagged,
         timestamp: msg.value.timestamp
       }
-    }
+    } else if (isRootTag(msg)) {
+      return {
+        tagKey: msg.key,
+        author: msg.value.author,
+        timestamp: msg.value.timestamp,
+        root: true
+      }
+    } 
   }
+}
+
+function isRootTag(msg) {
+  return get(msg, 'value.content.type') === 'tag'
 }
 
 function isTag(msg) {
