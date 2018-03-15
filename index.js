@@ -13,7 +13,7 @@ exports.manifest = {
 var initialState = {}
 
 exports.init = function(ssb, config) {
-  return ssb._flumeUse('tags', FlumeReduce('test', reduce, map, null, initialState))
+  return ssb._flumeUse('tags', FlumeReduce(1, reduce, map, null, initialState))
 
   function reduce(result, item) {
     if (!item) return result
@@ -47,9 +47,6 @@ exports.init = function(ssb, config) {
   }
   
   function map(msg) {
-    // only include your own tags (for now)
-    if (msg.value.author !== ssb.id) return
-  
     // unbox private message
     if (msg.value.content === 'string') {
       // unbox private message (requires ssb-private plugin)
