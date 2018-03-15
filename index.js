@@ -20,6 +20,8 @@ exports.init = function(ssb, config) {
 
     var { root, tagKey, author, message, tagged, timestamp } = item
     var storedTimestamp = get(result, [author, tagKey, message])
+    var shouldAddTag = tagged && (!storedTimestamp || timestamp > storedTimestamp)
+    var shouldRemoveTag = storedTimestamp && tagged === false
 
     if (root) {
       var rootTag = {
@@ -28,7 +30,7 @@ exports.init = function(ssb, config) {
         }
       }
       result = merge(result, rootTag)
-    } else if (shouldAddTag()) {
+    } else if (shouldAddTag) {
       var newTag = {
         [author]: {
           [tagKey]: {
@@ -37,20 +39,11 @@ exports.init = function(ssb, config) {
         }
       }
       result = merge(result, newTag)
-    } else if (shouldRemoveTag()) {
+    } else if (shouldRemoveTag) {
       delete result[author][tagKey][message]
     }
   
     return result
-
-    function shouldAddTag() {
-      if (!tagged) return false
-      return !storedTimestamp || timestamp > storedTimestamp
-    }
-
-    function shouldRemoveTag() {
-      return storedTimestamp && tagged === false
-    }
   }
   
   function map(msg) {
