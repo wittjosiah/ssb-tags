@@ -12,10 +12,10 @@ exports.manifest = {
 
 var initialState = {}
 
-exports.init = function(ssb, config) {
+exports.init = function (ssb, config) {
   return ssb._flumeUse('tags', FlumeReduce(1, reduce, map, null, initialState))
 
-  function reduce(result, item) {
+  function reduce (result, item) {
     if (!item) return result
 
     var { root, tagKey, author, message, tagged, timestamp } = item
@@ -42,11 +42,11 @@ exports.init = function(ssb, config) {
     } else if (shouldRemoveTag) {
       delete result[author][tagKey][message]
     }
-  
+
     return result
   }
-  
-  function map(msg) {
+
+  function map (msg) {
     // unbox private message
     if (msg.value.content === 'string') {
       // unbox private message (requires ssb-private plugin)
@@ -68,15 +68,15 @@ exports.init = function(ssb, config) {
         timestamp: msg.value.timestamp,
         root: true
       }
-    } 
+    }
   }
 }
 
-function isRootTag(msg) {
+function isRootTag (msg) {
   return get(msg, 'value.content.type') === 'tag'
 }
 
-function isTag(msg) {
-  return get(msg, 'value.content.type') === 'tag'
-    && ref.isLink(get(msg, 'value.content.message'))
+function isTag (msg) {
+  return get(msg, 'value.content.type') === 'tag' &&
+    ref.isLink(get(msg, 'value.content.message'))
 }
