@@ -2,6 +2,7 @@ var FlumeReduce = require('flumeview-reduce')
 var ref = require('ssb-ref')
 var get = require('lodash/get')
 var merge = require('lodash/merge')
+var TagHelper = require('scuttle-tag')
 
 exports.name = 'tags'
 exports.version = require('./package.json').version
@@ -13,7 +14,8 @@ exports.manifest = {
 var initialState = {}
 
 exports.init = function (ssb, config) {
-  return ssb._flumeUse('tags', FlumeReduce(1, reduce, map, null, initialState))
+  var ScuttleTag = TagHelper(ssb)
+  return ssb._flumeUse('tags', FlumeReduce(2, reduce, map, null, initialState))
 
   function reduce (result, item) {
     if (!item) return result
@@ -70,13 +72,13 @@ exports.init = function (ssb, config) {
       }
     }
   }
-}
 
-function isRootTag (msg) {
-  return get(msg, 'value.content.type') === 'tag'
-}
+  // TODO: pull helper function into scuttle-tag
+  function isRootTag (msg) {
+    return ScuttleTag.sync.isTag(msg) && !get(msg, 'value.content.message')
+  }
 
-function isTag (msg) {
-  return get(msg, 'value.content.type') === 'tag' &&
-    ref.isLink(get(msg, 'value.content.message'))
+  function isTag (msg) {
+    return ScuttleTag.sync.isTag(msg) && ref.isLink(get(msg, 'value.content.message'))
+  }
 }
